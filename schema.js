@@ -1,16 +1,8 @@
 const {GraphQLObjectType, GraphQLNonNull, GraphQLList ,GraphQLSchema, GraphQLString, GraphQLInt, GraphQLID} = require('graphql')
-const Customer = require('./models/user')
-
-const CustomerType = new GraphQLObjectType({
-    name: 'customer',
-    description: 'This represents a customer',
-    fields: ()=>({
-        id: {type: GraphQLID},
-        name: {type: GraphQLString},
-        email: {type: GraphQLString},
-        age: {type: GraphQLInt},
-    })
-})
+const Customer = require('./models/customer')
+const Employee = require('./models/employee')
+const CustomerType = require('./GraphTypes/CustomerType')
+const EmployeeType = require('./GraphTypes/EmployeeType')
 
 const RootQueryType = new GraphQLObjectType({
     name:'RootQuery',
@@ -29,6 +21,21 @@ const RootQueryType = new GraphQLObjectType({
             type: new GraphQLList(CustomerType),
             resolve: async ()=>{
                 return await Customer.find({});
+            }
+        },
+        employee: {
+            type: EmployeeType,
+            args:{
+                id: {type:GraphQLID}
+            },
+            resolve: async (parent, args)=>{
+                return await Employee.findById(args.id)
+            }
+        },
+        employees: {
+            type: new GraphQLList(EmployeeType),
+            resolve: async ()=>{
+                return await Employee.find({});
             }
         }
     })
@@ -85,6 +92,50 @@ const MutationType = new GraphQLObjectType({
                 }
                 customer.save();
                 return customer;
+            }
+        },
+        addEmployee: {
+            type: EmployeeType,
+            description: "Add an employee",
+            args: {
+                name: {type: GraphQLNonNull(GraphQLString)},
+                email: {type: GraphQLNonNull(GraphQLString)}
+            },
+            resolve: async (parents, args) => {
+                const employee = await Employee.create(args); 
+                return employee;
+            }
+        },
+        deleteEmployee: {
+            type: EmployeeType,
+            description: "Delete an employee",
+            args: {
+                id: {type: GraphQLNonNull(GraphQLID)}
+            },
+            resolve: async (parents, args) => {
+                const employee = await Employee.findById(args.id); 
+                employee.remove();
+                return employee;
+            }
+        },
+        updateEmployee: {
+            type: EmployeeType,
+            description: "Update an employee info",
+            args: {
+                id: {type: GraphQLNonNull(GraphQLID)},
+                email: {type: (GraphQLString)},
+                name: {type: (GraphQLString)}
+            },
+            resolve: async (parents, args) => {
+                const employee = await Employee.findById(args.id);
+                if (args.email){
+                    employee.email = args.email
+                }
+                if (args.name){
+                    employee.name = args.name
+                }
+                employee.save();
+                return employee;
             }
         }
     })
