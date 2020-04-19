@@ -50,6 +50,42 @@ const MutationType = new GraphQLObjectType({
                 const customer = await Customer.create(args); 
                 return customer;
             }
+        },
+        deleteCustomer: {
+            type: CustomerType,
+            description: "Delete a customer",
+            args: {
+                id: {type: GraphQLNonNull(GraphQLID)}
+            },
+            resolve: async (parents, args) => {
+                const customer = await Customer.findById(args.id); 
+                customer.remove();
+                return customer;
+            }
+        },
+        updateCustomer: {
+            type: CustomerType,
+            description: "Update a customer",
+            args: {
+                id: {type: GraphQLNonNull(GraphQLID)},
+                email: {type: (GraphQLString)},
+                name: {type: (GraphQLString)},
+                age: {type: (GraphQLInt)},
+            },
+            resolve: async (parents, args) => {
+                const customer = await Customer.findById(args.id);
+                if (args.email){
+                    customer.email = args.email
+                }
+                if (args.name){
+                    customer.name = args.name
+                }
+                if (args.age){
+                    customer.age = args.age
+                }
+                customer.save();
+                return customer;
+            }
         }
     })
 })
