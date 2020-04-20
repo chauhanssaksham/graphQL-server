@@ -12,6 +12,10 @@ const customerSchema = new mongoose.Schema({
     age: {
         type: Number,
         required: true
+    },
+    employee:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Employee'
     }
 })
 

@@ -1,8 +1,40 @@
 const {GraphQLObjectType, GraphQLNonNull, GraphQLList ,GraphQLSchema, GraphQLString, GraphQLInt, GraphQLID} = require('graphql')
 const Customer = require('./models/customer')
 const Employee = require('./models/employee')
-const CustomerType = require('./GraphTypes/CustomerType')
-const EmployeeType = require('./GraphTypes/EmployeeType')
+
+const CustomerType = new GraphQLObjectType({
+    name: 'customer',
+    description: 'This represents a customer',
+    fields: ()=>({
+        id: {type: GraphQLID},
+        name: {type: GraphQLString},
+        email: {type: GraphQLString},
+        age: {type: GraphQLInt},
+        employee: {
+            type: EmployeeType,
+            resolve: (customer) => {
+                return Employee.findById(customer.employee)
+            }
+        }
+    })
+})
+
+const EmployeeType = new GraphQLObjectType({
+    name: 'employee',
+    description: 'This represents an employee',
+    fields: ()=>({
+        id: {type: GraphQLID},
+        name: {type: GraphQLString},
+        email: {type: GraphQLString},
+        customers: {
+            type: GraphQLList(CustomerType),
+            resolve: async (employee)=>{
+                employee = await Employee.findById(employee.id).populate({path:'customers'});
+                return employee.customers
+            }
+        }
+    })
+})
 
 const RootQueryType = new GraphQLObjectType({
     name:'RootQuery',
@@ -51,11 +83,18 @@ const MutationType = new GraphQLObjectType({
             args: {
                 name: {type: GraphQLNonNull(GraphQLString)},
                 email: {type: GraphQLNonNull(GraphQLString)},
-                age: {type: GraphQLNonNull(GraphQLInt)}
+                age: {type: GraphQLNonNull(GraphQLInt)},
+                employee: {type: GraphQLNonNull(GraphQLID)}
             },
             resolve: async (parents, args) => {
-                const customer = await Customer.create(args); 
-                return customer;
+                const employee = await Employee.findById(args.employee);
+                if(employee){
+                    const customer = await Customer.create(args); 
+                    employee.customers.push(customer);
+                    employee.save();
+                    return customer;
+                }
+                else{return null;}
             }
         },
         deleteCustomer: {
@@ -67,6 +106,7 @@ const MutationType = new GraphQLObjectType({
             resolve: async (parents, args) => {
                 const customer = await Customer.findById(args.id); 
                 customer.remove();
+                await Employee.findByIdAndUpdate(customer.employee, {$pull: {customers: customer.id}})
                 return customer;
             }
         },
@@ -115,6 +155,7 @@ const MutationType = new GraphQLObjectType({
             resolve: async (parents, args) => {
                 const employee = await Employee.findById(args.id); 
                 employee.remove();
+                await Customer.deleteMany({employee: args.id});
                 return employee;
             }
         },
